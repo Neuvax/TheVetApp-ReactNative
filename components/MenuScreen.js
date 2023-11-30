@@ -1,22 +1,36 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Button, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { db } from '../firebaseConfig'; // Adjust the path as necessary
+import { collection, getDocs } from 'firebase/firestore';
 
 const MenuScreen = ({ navigation }) => {
-    // Sample data - replace this with Firebase data fetching logic
-    const animals = [
-        { id: '1', name: 'Charlie' },
-        { id: '2', name: 'Max' },
-        // Add more sample animals
-    ];
+    const [animals, setAnimals] = useState([]);
 
-    // Function to navigate to DetailScreen with animal's data
-    const viewDetails = (animal) => {
-        navigation.navigate('DetailScreen', { animal });
+    const fetchAnimals = async () => {
+        try {
+            const querySnapshot = await getDocs(collection(db, "animals"));
+            const animalsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setAnimals(animalsData);
+        } catch (error) {
+            console.error("Error fetching animals:", error);
+            // Manejar el error adecuadamente
+        }
     };
 
-    // Function to navigate to DetailScreen for registering a new animal
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            fetchAnimals();
+        });
+
+        return unsubscribe;
+    }, [navigation]);
+
+    const viewDetails = (animal) => {
+        navigation.navigate('DetailScreen', { animal, onGoBack: fetchAnimals });
+    };
+
     const registerNewAnimal = () => {
-        navigation.navigate('DetailScreen', { animal: null });
+        navigation.navigate('DetailScreen', { animal: null, onGoBack: fetchAnimals });
     };
 
     return (
@@ -27,7 +41,9 @@ const MenuScreen = ({ navigation }) => {
                 renderItem={({ item }) => (
                     <View style={styles.listItem}>
                         <Text style={styles.itemText}>{item.name}</Text>
-                        <Button title="Details" onPress={() => viewDetails(item)} />
+                        <TouchableOpacity onPress={() => viewDetails(item)} style={styles.detailButton}>
+                            <Text style={styles.buttonText}>Details</Text>
+                        </TouchableOpacity>
                     </View>
                 )}
             />
@@ -37,6 +53,7 @@ const MenuScreen = ({ navigation }) => {
         </View>
     );
 };
+
 
 const styles = StyleSheet.create({
     container: {
@@ -54,6 +71,16 @@ const styles = StyleSheet.create({
     },
     itemText: {
         fontSize: 18
+    },
+    detailButton: {
+        backgroundColor: '#007bff',
+        padding: 10,
+        borderRadius: 5,
+    },
+    buttonText: {
+        color: 'white',
+        textAlign: 'center',
+        fontSize: 16,
     },
     addButton: {
         backgroundColor: '#007bff',
